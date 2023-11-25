@@ -1,4 +1,4 @@
-# PizzaYOLO : A pizza real time object detector
+# PizzaYOLO : A real time pizza object detector
 
 This project is a complete end-to-end training pipeline for object detection applications. The purpose is to create new models which are both fast to create (going from idea to a working model) and fast to run (fast inference time so that models can be deployed). We demonstrate the effectiveness of this pipeline by detecting *pizzas*. It can easily be extended to any objects with **text prompts**. 
 
