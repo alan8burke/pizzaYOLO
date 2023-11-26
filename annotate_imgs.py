@@ -37,6 +37,44 @@ def load_images_from_folder(folder_path: str) -> Tuple[List[Image.Image], List[s
     return images, imgs_path
 
 
+def calculate_iou(box1, box2):
+    """
+    Calculate Intersection over Union (IoU) between two bounding boxes.
+    """
+    x1 = max(box1['xmin'], box2['xmin'])
+    y1 = max(box1['ymin'], box2['ymin'])
+    x2 = min(box1['xmax'], box2['xmax'])
+    y2 = min(box1['ymax'], box2['ymax'])
+
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    area_box1 = (box1['xmax'] - box1['xmin']) * (box1['ymax'] - box1['ymin'])
+    area_box2 = (box2['xmax'] - box2['xmin']) * (box2['ymax'] - box2['ymin'])
+    union = area_box1 + area_box2 - intersection
+
+    iou = intersection / union
+    return iou
+
+
+def non_max_suppression(predictions, iou_threshold=0.5):
+    """
+    Apply Non-Maximum Suppression (NMS) to the list of predictions.
+    """
+    predictions.sort(key=lambda x: x['score'], reverse=True)
+    keep = []
+
+    for i in range(len(predictions)):
+        keep.append(True)
+
+        for j in range(i + 1, len(predictions)):
+            iou = calculate_iou(predictions[i]['box'], predictions[j]['box'])
+
+            if iou >= iou_threshold:
+                keep[-1] = False
+
+    nms_predictions = [predictions[i] for i in range(len(predictions)) if keep[i]]
+    return nms_predictions
+
+
 def run_annotations(input_folder, text_prompts, output_folder) -> None:
     # As the dataset is small, we load everything in memory
     # If the dataset was large, either use a Dataset object or generator
@@ -53,13 +91,16 @@ def run_annotations(input_folder, text_prompts, output_folder) -> None:
         preds = detector(img, candidate_labels=text_prompts)
 
         if preds:
+            # Apply NMS
+            preds_after_nms = non_max_suppression(preds, iou_threshold=0.2)
+
             # Add filepath to new dict
-            updated_pred = {"prediction": preds, "img_path": imgs_path[idx]}
+            updated_pred = {"prediction": preds_after_nms, "img_path": imgs_path[idx]}
             annotated_dataset.append(updated_pred)
 
             # Draw img
             draw = ImageDraw.Draw(imgs[idx])
-            for pred in preds:
+            for pred in preds_after_nms:
                 box = pred["box"]
                 label = pred["label"]
                 score = pred["score"]
